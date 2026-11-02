@@ -1,29 +1,27 @@
-// Java Lab Vault - Controller & Logic
+// Notepad Interface Controller for Java Lab
 
 let currentExpId = 1;
 let currentFileIndex = 0;
-let currentFilter = 'All';
-let searchQuery = '';
+let openTabs = [1, 2, 3, 4, 5]; // Default open tabs
+let sidebarVisible = true;
+let detailsPanelVisible = false;
 
-// Highlighting Java syntax offline
+// Syntax highlighter for Notepad view
 function highlightJava(rawCode) {
-  // First escape HTML entities
   let code = rawCode
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // Multi-line comments
-  code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="hl-comment">$1</span>');
+  // Comments
+  code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="np-hl-comment">$1</span>');
+  code = code.replace(/(\/\/[^\n]*)/g, '<span class="np-hl-comment">$1</span>');
 
-  // Single-line comments
-  code = code.replace(/(\/\/[^\n]*)/g, '<span class="hl-comment">$1</span>');
+  // Strings
+  code = code.replace(/(".*?")/g, '<span class="np-hl-string">$1</span>');
 
-  // String literals
-  code = code.replace(/(".*?")/g, '<span class="hl-string">$1</span>');
-
-  // Annotations like @Override, @WebServlet
-  code = code.replace(/(@[A-Za-z0-9_]+)/g, '<span class="hl-annotation">$1</span>');
+  // Annotations
+  code = code.replace(/(@[A-Za-z0-9_]+)/g, '<span class="np-hl-annotation">$1</span>');
 
   // Keywords
   const keywords = [
@@ -34,31 +32,30 @@ function highlightJava(rawCode) {
     'return', 'short', 'static', 'strictfp', 'super', 'switch', 'synchronized', 'this',
     'throw', 'throws', 'transient', 'try', 'void', 'volatile', 'while', 'record'
   ];
-
   const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
-  code = code.replace(keywordRegex, '<span class="hl-keyword">$1</span>');
+  code = code.replace(keywordRegex, '<span class="np-hl-keyword">$1</span>');
 
-  // Common built-in Java types
+  // Types
   const types = ['String', 'Scanner', 'System', 'Math', 'Thread', 'Object', 'Exception',
                  'ArithmeticException', 'ArrayIndexOutOfBoundsException', 'Random', 'File',
                  'Map', 'HashMap', 'LinkedHashMap', 'BufferedReader', 'FileReader', 'Connection',
                  'DriverManager', 'Statement', 'ResultSet', 'SQLException', 'HttpServlet',
                  'HttpServletRequest', 'HttpServletResponse', 'PrintWriter'];
   const typeRegex = new RegExp(`\\b(${types.join('|')})\\b`, 'g');
-  code = code.replace(typeRegex, '<span class="hl-type">$1</span>');
+  code = code.replace(typeRegex, '<span class="np-hl-type">$1</span>');
 
   // Numbers
-  code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="hl-number">$1</span>');
+  code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="np-hl-number">$1</span>');
 
   return code;
 }
 
-// Copy helper with feedback
-function copyToClipboard(text, message = "Code copied to clipboard!") {
+// Copy helper
+function copyToClipboard(text, message = "Copied to clipboard!") {
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).then(() => {
       showToast(message);
-    }).catch(err => {
+    }).catch(() => {
       fallbackCopy(text, message);
     });
   } else {
@@ -79,25 +76,25 @@ function fallbackCopy(text, message) {
     document.execCommand('copy');
     showToast(message);
   } catch (err) {
-    console.error('Copy failed', err);
     showToast("Failed to copy automatically");
   }
   document.body.removeChild(textArea);
 }
 
-// Toast notification
-let toastTimeout;
+// Toast
+let toastTimer;
 function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.innerHTML = `<span>✓</span> <span>${msg}</span>`;
+  const toast = document.getElementById('np-toast');
+  if (!toast) return;
+  toast.textContent = msg;
   toast.classList.add('show');
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => {
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
     toast.classList.remove('show');
-  }, 2400);
+  }, 2200);
 }
 
-// Download file helper
+// Download helper
 function downloadFile(filename, content) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -108,139 +105,205 @@ function downloadFile(filename, content) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast(`Downloading ${filename}`);
+  showToast(`Saved ${filename}`);
 }
 
-// Render Sidebar List
-function renderSidebar() {
-  const listEl = document.getElementById('exp-list');
-  listEl.innerHTML = '';
+// Active Experiment getters
+function getActiveExp() {
+  return EXPERIMENTS.find(e => e.id === currentExpId) || EXPERIMENTS[0];
+}
+
+function getActiveFile() {
+  const exp = getActiveExp();
+  return exp.files[currentFileIndex] || exp.files[0];
+}
+
+// Render Tabs Bar (Windows 11 Notepad style)
+function renderTabs() {
+  const tabsBar = document.getElementById('tabs-bar');
+  if (!tabsBar) return;
+
+  // Make sure current experiment is in openTabs
+  if (!openTabs.includes(currentExpId)) {
+    openTabs.push(currentExpId);
+  }
+
+  let html = '';
+  openTabs.forEach(id => {
+    const exp = EXPERIMENTS.find(e => e.id === id);
+    if (!exp) return;
+    const file = exp.files[0];
+    const isActive = id === currentExpId;
+
+    html += `
+      <div class="np-tab ${isActive ? 'active' : ''}" onclick="selectExperiment(${id})">
+        <span class="tab-exp-id">E${id.toString().padStart(2, '0')}</span>
+        <span>${file.filename}</span>
+        <span class="tab-close-btn" onclick="event.stopPropagation(); closeTab(${id})">✕</span>
+      </div>
+    `;
+  });
+
+  html += `
+    <button class="new-tab-btn" onclick="openNextTab()" title="Open Next Experiment Tab">+</button>
+  `;
+
+  tabsBar.innerHTML = html;
+}
+
+function closeTab(id) {
+  if (openTabs.length <= 1) {
+    showToast("At least one tab must remain open");
+    return;
+  }
+  openTabs = openTabs.filter(t => t !== id);
+  if (currentExpId === id) {
+    currentExpId = openTabs[0];
+    currentFileIndex = 0;
+  }
+  renderTabs();
+  renderActiveView();
+}
+
+function openNextTab() {
+  // Find first experiment not currently in openTabs
+  const nextExp = EXPERIMENTS.find(e => !openTabs.includes(e.id));
+  if (nextExp) {
+    openTabs.push(nextExp.id);
+    selectExperiment(nextExp.id);
+  } else {
+    showToast("All 20 experiment tabs are already open!");
+  }
+}
+
+// Render Sidebar File Tree
+function renderSidebarTree(query = '') {
+  const tree = document.getElementById('exp-tree');
+  if (!tree) return;
 
   const filtered = EXPERIMENTS.filter(exp => {
-    // Category filter
-    let matchCat = true;
-    if (currentFilter !== 'All') {
-      if (currentFilter === 'Basics' && (exp.id < 1 || exp.id > 3)) matchCat = false;
-      else if (currentFilter === 'OOP' && (exp.id < 4 || exp.id > 8)) matchCat = false;
-      else if (currentFilter === 'Exceptions' && (exp.id < 11 || exp.id > 12)) matchCat = false;
-      else if (currentFilter === 'Threads' && (exp.id < 13 || exp.id > 14)) matchCat = false;
-      else if (currentFilter === 'Files/Collections' && (exp.id < 15 || exp.id > 18)) matchCat = false;
-      else if (currentFilter === 'Advanced' && (exp.id < 19 || exp.id > 20)) matchCat = false;
-    }
-
-    // Search query filter
-    let matchSearch = true;
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      const inTitle = exp.title.toLowerCase().includes(q);
-      const inAim = exp.aim.toLowerCase().includes(q);
-      const inCode = exp.files.some(f => f.code.toLowerCase().includes(q));
-      const inNum = exp.id.toString() === q || `exp ${exp.id}`.includes(q) || `week ${exp.id}`.includes(q);
-      matchSearch = inTitle || inAim || inCode || inNum;
-    }
-
-    return matchCat && matchSearch;
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return exp.title.toLowerCase().includes(q) ||
+           exp.files.some(f => f.filename.toLowerCase().includes(q) || f.code.toLowerCase().includes(q)) ||
+           `exp ${exp.id}`.includes(q) ||
+           exp.id.toString() === q;
   });
 
   if (filtered.length === 0) {
-    listEl.innerHTML = `<li style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No matching experiments found</li>`;
+    tree.innerHTML = `<li style="padding: 12px; color: var(--np-text-muted); font-size: 11px;">No matching files</li>`;
     return;
   }
 
-  filtered.forEach(exp => {
-    const li = document.createElement('li');
-    li.className = `exp-item ${exp.id === currentExpId ? 'active' : ''}`;
-    li.onclick = () => selectExperiment(exp.id);
-
-    li.innerHTML = `
-      <div class="exp-item-info">
-        <span class="exp-num">E${exp.id.toString().padStart(2, '0')}</span>
-        <div class="exp-title-block">
-          <div class="exp-title-text">${exp.title}</div>
-          <div class="exp-category-text">${exp.category}</div>
-        </div>
-      </div>
-      <button class="exp-quick-copy" title="Quick Copy Code" onclick="event.stopPropagation(); copyExpCode(${exp.id});">
-        📋 Copy
-      </button>
+  tree.innerHTML = filtered.map(exp => {
+    const file = exp.files[0];
+    const isActive = exp.id === currentExpId;
+    return `
+      <li class="tree-item ${isActive ? 'active' : ''}" onclick="selectExperiment(${exp.id})">
+        <span class="tree-icon">📄</span>
+        <span class="tree-text">${exp.id.toString().padStart(2, '0')}_${file.filename}</span>
+      </li>
     `;
-
-    listEl.appendChild(li);
-  });
+  }).join('');
 }
 
-function copyExpCode(id) {
-  const exp = EXPERIMENTS.find(e => e.id === id);
-  if (exp && exp.files.length > 0) {
-    copyToClipboard(exp.files[0].code, `Copied Exp ${exp.id} code!`);
-  }
+// Render Experiments Menu Dropdown
+function renderExpMenu() {
+  const menu = document.getElementById('menu-exp');
+  if (!menu) return;
+
+  menu.innerHTML = EXPERIMENTS.map(exp => `
+    <div class="dropdown-item" onclick="selectExperiment(${exp.id})">
+      <span>${exp.id.toString().padStart(2, '0')}. ${exp.title}</span>
+      <span class="shortcut">${exp.category}</span>
+    </div>
+  `).join('');
 }
 
 // Select an experiment
 function selectExperiment(id) {
   currentExpId = id;
   currentFileIndex = 0;
-  renderSidebar();
-  renderDetail();
+  closeAllMenus();
 
-  // Scroll main content to top
-  const contentArea = document.getElementById('content-area');
-  if (contentArea) contentArea.scrollTop = 0;
-
-  // On mobile, close sidebar after selection
-  const sidebar = document.getElementById('sidebar');
-  if (window.innerWidth <= 868) {
-    sidebar.classList.remove('open');
+  if (!openTabs.includes(id)) {
+    openTabs.push(id);
   }
+
+  renderTabs();
+  renderSidebarTree(document.getElementById('sidebar-search-input')?.value || '');
+  renderActiveView();
 }
 
-// Render active experiment detail
-function renderDetail() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (!exp) return;
+// Render Active Code and Gutter
+function renderActiveView() {
+  const exp = getActiveExp();
+  const file = getActiveFile();
 
-  const currentFile = exp.files[currentFileIndex] || exp.files[0];
+  // Window title
+  const titleEl = document.getElementById('window-title');
+  if (titleEl) {
+    titleEl.textContent = `${file.filename} - Notepad`;
+  }
+  document.title = `${file.filename} - Notepad`;
 
-  // Title & Badges
-  document.getElementById('detail-id').textContent = `EXP ${exp.id.toString().padStart(2, '0')}`;
-  document.getElementById('detail-cat').textContent = exp.category;
-  document.getElementById('detail-file').textContent = currentFile.filename;
-  document.getElementById('detail-title').textContent = exp.title;
-
-  // Aim
-  document.getElementById('detail-aim').textContent = exp.aim;
-
-  // File Tabs (if multi-file)
-  const tabsContainer = document.getElementById('file-tabs-container');
+  // Multi-file switcher (e.g. Exp 10 & Exp 16)
+  const switcher = document.getElementById('inner-file-switcher');
   if (exp.files.length > 1) {
-    tabsContainer.style.display = 'flex';
-    tabsContainer.innerHTML = exp.files.map((file, idx) => `
-      <div class="file-tab ${idx === currentFileIndex ? 'active' : ''}" onclick="switchFileTab(${idx})">
-        📄 ${file.filename}
-      </div>
+    switcher.style.display = 'flex';
+    switcher.innerHTML = exp.files.map((f, idx) => `
+      <button class="inner-file-btn ${idx === currentFileIndex ? 'active' : ''}" onclick="switchInnerFile(${idx})">
+        📄 ${f.filename}
+      </button>
     `).join('');
   } else {
-    tabsContainer.style.display = 'none';
+    switcher.style.display = 'none';
   }
 
-  // Active Code block
-  document.getElementById('active-code-filename').textContent = currentFile.filename;
-  document.getElementById('code-display').innerHTML = highlightJava(currentFile.code);
+  // Code editor content
+  const editor = document.getElementById('editor-content');
+  if (editor) {
+    editor.innerHTML = highlightJava(file.code);
+  }
 
-  // Terminal commands
-  document.getElementById('terminal-compile-cmd').textContent = exp.compileCmd;
-  document.getElementById('terminal-run-cmd').textContent = exp.runCmd;
+  // Update Line Numbers Gutter
+  const lines = file.code.split('\n').length;
+  const gutter = document.getElementById('editor-gutter');
+  if (gutter) {
+    let gutterHtml = '';
+    for (let i = 1; i <= lines; i++) {
+      gutterHtml += i + '<br>';
+    }
+    gutter.innerHTML = gutterHtml;
+  }
 
-  // Sample Input & Output
-  document.getElementById('sample-input-content').textContent = exp.sampleInput;
-  document.getElementById('sample-output-content').textContent = exp.sampleOutput;
+  // Update Status bar line count
+  const statusLine = document.getElementById('status-line-col');
+  if (statusLine) {
+    statusLine.textContent = `Ln ${lines}, Col 1`;
+  }
 
-  // Note & Result
-  document.getElementById('detail-note').textContent = exp.note;
-  document.getElementById('detail-result').textContent = exp.result;
+  // Update Details Panel
+  renderDetailsPanel(exp);
+}
 
-  // Viva Cheat Sheet
-  const vivaList = document.getElementById('viva-questions-list');
+function switchInnerFile(idx) {
+  currentFileIndex = idx;
+  renderActiveView();
+}
+
+// Render Lab Details Panel (Aim, Commands, Inputs, Outputs, Viva)
+function renderDetailsPanel(exp) {
+  document.getElementById('panel-title').textContent = `Exp ${exp.id}: ${exp.title}`;
+  document.getElementById('panel-aim').textContent = exp.aim;
+  document.getElementById('panel-compile-cmd').textContent = exp.compileCmd;
+  document.getElementById('panel-run-cmd').textContent = exp.runCmd;
+  document.getElementById('panel-input').textContent = exp.sampleInput;
+  document.getElementById('panel-output').textContent = exp.sampleOutput;
+  document.getElementById('panel-note').textContent = exp.note;
+  document.getElementById('panel-result').textContent = exp.result;
+
+  const vivaList = document.getElementById('panel-viva-list');
   if (exp.viva && exp.viva.length > 0) {
     vivaList.innerHTML = exp.viva.map(q => {
       const parts = q.split('?');
@@ -254,131 +317,218 @@ function renderDetail() {
   }
 }
 
-function switchFileTab(idx) {
-  currentFileIndex = idx;
-  renderDetail();
-}
-
-// Action Bar Buttons
+// Quick Copy Actions
 function copyActiveCode() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (!exp) return;
-  const currentFile = exp.files[currentFileIndex] || exp.files[0];
-  copyToClipboard(currentFile.code, `Copied ${currentFile.filename}!`);
+  const file = getActiveFile();
+  copyToClipboard(file.code, `Copied ${file.filename} code!`);
+  closeAllMenus();
 }
 
 function downloadActiveFile() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (!exp) return;
-  const currentFile = exp.files[currentFileIndex] || exp.files[0];
-  downloadFile(currentFile.filename.split('/').pop(), currentFile.code);
+  const file = getActiveFile();
+  downloadFile(file.filename.split('/').pop(), file.code);
+  closeAllMenus();
 }
 
 function copyCompileCmd() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (exp) copyToClipboard(exp.compileCmd, "Copied compile command!");
+  const exp = getActiveExp();
+  copyToClipboard(exp.compileCmd, "Copied javac command!");
+  closeAllMenus();
 }
 
 function copyRunCmd() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (exp) copyToClipboard(exp.runCmd, "Copied run command!");
+  const exp = getActiveExp();
+  copyToClipboard(exp.runCmd, "Copied java command!");
+  closeAllMenus();
 }
 
 function copySampleInput() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (exp) copyToClipboard(exp.sampleInput, "Copied sample input!");
+  const exp = getActiveExp();
+  copyToClipboard(exp.sampleInput, "Copied sample input!");
+  closeAllMenus();
 }
 
 function copySampleOutput() {
-  const exp = EXPERIMENTS.find(e => e.id === currentExpId);
-  if (exp) copyToClipboard(exp.sampleOutput, "Copied sample output!");
+  const exp = getActiveExp();
+  copyToClipboard(exp.sampleOutput, "Copied expected output!");
+  closeAllMenus();
 }
 
-// Panic / Disguise Mode Toggle
+// Menu interactions
+function toggleMenu(event, menuId) {
+  event.stopPropagation();
+  const menu = document.getElementById(menuId);
+  const parent = menu.parentElement;
+  const isAlreadyActive = parent.classList.contains('active');
+
+  closeAllMenus();
+
+  if (!isAlreadyActive) {
+    parent.classList.add('active');
+  }
+}
+
+function closeAllMenus() {
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.classList.remove('active');
+  });
+}
+
+// Panel and Sidebar Toggles
+function toggleSidebar() {
+  const sidebar = document.getElementById('np-sidebar');
+  sidebarVisible = !sidebarVisible;
+  sidebar.classList.toggle('collapsed', !sidebarVisible);
+  const menuText = document.getElementById('sidebar-menu-text');
+  if (menuText) {
+    menuText.textContent = sidebarVisible ? 'Hide Explorer' : 'Show Explorer';
+  }
+  closeAllMenus();
+}
+
+function toggleDetailsPanel() {
+  const panel = document.getElementById('np-details-panel');
+  detailsPanelVisible = !detailsPanelVisible;
+  panel.classList.toggle('hidden', !detailsPanelVisible);
+  closeAllMenus();
+}
+
+function openVivaDirectly() {
+  const panel = document.getElementById('np-details-panel');
+  detailsPanelVisible = true;
+  panel.classList.remove('hidden');
+  closeAllMenus();
+  showToast("Showing Viva & Lab Notes");
+}
+
+function focusSearch() {
+  const input = document.getElementById('sidebar-search-input');
+  if (!sidebarVisible) toggleSidebar();
+  input.focus();
+  closeAllMenus();
+}
+
+// Panic Mode (Disguise)
 function togglePanicMode() {
   document.body.classList.toggle('panic-mode');
   if (document.body.classList.contains('panic-mode')) {
     document.title = "Overview (Java Platform SE 17 & JDK 17)";
   } else {
-    document.title = "Java Lab Vault - Quick Code Hub";
+    const file = getActiveFile();
+    document.title = `${file.filename} - Notepad`;
   }
+  closeAllMenus();
 }
 
-// Theme Toggle
+// Theme Toggle (Dark Notepad <-> Light Notepad)
 function toggleTheme() {
-  const currentTheme = document.body.getAttribute('data-theme') || 'dark';
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.body.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  const themeBtn = document.getElementById('theme-toggle-btn');
-  themeBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+  const current = document.body.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', next);
+  localStorage.setItem('np-theme', next);
+  const themeText = document.getElementById('theme-menu-text');
+  if (themeText) {
+    themeText.textContent = next === 'dark' ? 'Switch to Light Notepad' : 'Switch to Dark Notepad';
+  }
+  showToast(next === 'dark' ? 'Dark Notepad Mode' : 'Light Notepad Mode');
+  closeAllMenus();
 }
 
-// Initialize on DOM load
+// Global Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-  // Restore saved theme
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  document.body.setAttribute('data-theme', savedTheme);
-  document.getElementById('theme-toggle-btn').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+  // Restore theme
+  const saved = localStorage.getItem('np-theme') || 'dark';
+  document.body.setAttribute('data-theme', saved);
+  const themeText = document.getElementById('theme-menu-text');
+  if (themeText) {
+    themeText.textContent = saved === 'dark' ? 'Switch to Light Notepad' : 'Switch to Dark Notepad';
+  }
 
-  // Render initial views
-  renderSidebar();
-  renderDetail();
+  // Initialize Right panel as hidden by default for maximum Notepad stealth
+  document.getElementById('np-details-panel').classList.add('hidden');
 
-  // Search input handler
-  const searchInput = document.getElementById('search-input');
+  renderExpMenu();
+  renderTabs();
+  renderSidebarTree();
+  renderActiveView();
+
+  // Search input
+  const searchInput = document.getElementById('sidebar-search-input');
   searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value;
-    renderSidebar();
+    renderSidebarTree(e.target.value);
   });
 
-  // Filter pills handler
-  document.querySelectorAll('.filter-pills .pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      currentFilter = pill.getAttribute('data-filter');
-      renderSidebar();
-    });
+  // Clicking outside closes menus
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.menu-item')) {
+      closeAllMenus();
+    }
   });
 
-  // Mobile sidebar toggle
-  document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('open');
-  });
-
-  // Keyboard navigation & shortcuts
+  // Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
-    // ESC key toggles Panic / Oracle Disguise mode anytime
+    // ESC -> Panic mode
     if (e.key === 'Escape') {
       togglePanicMode();
       return;
     }
 
-    // If focused on an input, don't trigger hotkeys
-    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+    // Ctrl+S -> Download .java
+    if (e.ctrlKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      downloadActiveFile();
       return;
     }
 
-    if (e.key === '/' || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
+    // Ctrl+B -> Toggle Sidebar
+    if (e.ctrlKey && e.key.toLowerCase() === 'b') {
       e.preventDefault();
-      searchInput.focus();
-    } else if (e.key.toLowerCase() === 'c') {
-      copyActiveCode();
-    } else if (e.key.toLowerCase() === 'd') {
-      downloadActiveFile();
-    } else if (e.key.toLowerCase() === 'j' || e.key === 'ArrowDown') {
+      toggleSidebar();
+      return;
+    }
+
+    // Ctrl+F -> Focus search
+    if (e.ctrlKey && e.key.toLowerCase() === 'f') {
       e.preventDefault();
-      if (currentExpId < EXPERIMENTS.length) {
-        selectExperiment(currentExpId + 1);
-      }
-    } else if (e.key.toLowerCase() === 'k' || e.key === 'ArrowUp') {
+      focusSearch();
+      return;
+    }
+
+    // Alt+M -> Toggle Notes / Viva
+    if (e.altKey && e.key.toLowerCase() === 'm') {
       e.preventDefault();
-      if (currentExpId > 1) {
-        selectExperiment(currentExpId - 1);
-      }
-    } else if (e.key.toLowerCase() === 't') {
+      toggleDetailsPanel();
+      return;
+    }
+
+    // Alt+T -> Toggle Theme
+    if (e.altKey && e.key.toLowerCase() === 't') {
+      e.preventDefault();
       toggleTheme();
+      return;
+    }
+
+    // Alt+C -> Copy javac
+    if (e.altKey && e.key.toLowerCase() === 'c') {
+      e.preventDefault();
+      copyCompileCmd();
+      return;
+    }
+
+    // Alt+R -> Copy java
+    if (e.altKey && e.key.toLowerCase() === 'r') {
+      e.preventDefault();
+      copyRunCmd();
+      return;
+    }
+
+    // C / D when not inside input
+    if (!['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+      if (e.key.toLowerCase() === 'c' && !e.ctrlKey) {
+        copyActiveCode();
+      } else if (e.key.toLowerCase() === 'd' && !e.ctrlKey) {
+        downloadActiveFile();
+      }
     }
   });
 });
