@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java Lab Vault - Quick Code Hub</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2226%22>☕</text></svg>">
+</head>
+<body data-theme="dark">
+
+  <!-- ==================== ORACLE DISGUISE / PANIC SCREEN ==================== -->
+  <div class="disguise-overlay" id="disguise-screen">
+    <div class="oracle-header">
+      <h1>Java™ Platform, Standard Edition &amp; Java Development Kit Version 17 API Specification</h1>
+      <button class="btn" style="background:#fff; color:#2c4557; font-size:0.75rem; padding:4px 8px;" onclick="togglePanicMode()">Exit Disguise (Esc)</button>
+    </div>
+    <div class="oracle-nav">
+      <a href="#overview">Overview</a>
+      <a href="#module">Module</a>
+      <a href="#package">Package</a>
+      <a href="#class">Class</a>
+      <a href="#use">Use</a>
+      <a href="#tree">Tree</a>
+      <a href="#deprecated">Deprecated</a>
+      <a href="#index">Index</a>
+      <a href="#help">Help</a>
+    </div>
+    <div class="oracle-body">
+      <div class="oracle-title">Java Platform Standard Edition 17 Core Modules</div>
+      <p style="margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6;">
+        The Java Platform, Standard Edition (Java SE) APIs define the core Java platform for general-purpose computing. These APIs are in modules whose names start with <code>java.</code>.
+      </p>
+
+      <table class="oracle-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Module / Package</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>java.base</strong> / java.lang</td>
+            <td>Provides classes that are fundamental to the design of the Java programming language. Includes Object, Class, String, Math, Thread, and System.</td>
+          </tr>
+          <tr>
+            <td><strong>java.base</strong> / java.util</td>
+            <td>Contains the collections framework, legacy collection classes, event model, date and time facilities, internationalization, and miscellaneous utility classes (Scanner, Random, Map, List, Set).</td>
+          </tr>
+          <tr>
+            <td><strong>java.base</strong> / java.io</td>
+            <td>Provides system input and output through data streams, serialization and the file system (File, BufferedReader, FileReader, InputStream).</td>
+          </tr>
+          <tr>
+            <td><strong>java.sql</strong> / java.sql</td>
+            <td>Provides the API for accessing and processing data stored in a data source (usually a relational database) using Java. Includes Connection, Statement, ResultSet, and DriverManager.</td>
+          </tr>
+          <tr>
+            <td><strong>jakarta.servlet</strong></td>
+            <td>The servlet API provides component-based, platform-independent methods for building Web-based applications, without the performance limitations of CGI programs.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="oracle-escape-hint">
+        <strong>Academic Notice:</strong> Reference documentation maintained for evaluation sessions. Press <kbd>ESC</kbd> or click the top button to toggle view.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APPLICATION ==================== -->
+  <div class="app-container">
+    
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <button class="mobile-toggle" id="mobile-menu-btn" title="Toggle Sidebar">☰</button>
+        <div class="brand" onclick="selectExperiment(1)">
+          <div class="brand-icon">☕</div>
+          <div class="brand-text">
+            <h1>Java Lab Vault <span class="brand-badge">20 EXP</span></h1>
+            <p>Internal Exam Cheat Sheet &amp; Fast Code Manual</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Input -->
+      <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" class="search-input" placeholder="Search experiment, topic, code..." autocomplete="off">
+        <span class="search-shortcut">Ctrl+K</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="nav-actions">
+        <button class="btn btn-panic" onclick="togglePanicMode()" title="Panic Mode (Disguises screen as Oracle Docs)">
+          🚨 <span>Panic (Esc)</span>
+        </button>
+        <button class="btn btn-icon-only" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
+          🌙
+        </button>
+        <a href="https://github.com/mohi2006august/java-lab" target="_blank" rel="noopener" class="btn" title="View Repository on GitHub">
+          ⭐ <span>GitHub</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="main-wrapper">
+      
+      <!-- Left Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Filter Category</span>
+            <span style="font-size: 0.72rem; color: var(--accent-cyan); font-family: var(--font-mono);">20 Programs</span>
+          </div>
+          <div class="filter-pills">
+            <span class="pill active" data-filter="All">All</span>
+            <span class="pill" data-filter="Basics">Basics</span>
+            <span class="pill" data-filter="OOP">OOP</span>
+            <span class="pill" data-filter="Exceptions">Exceptions</span>
+            <span class="pill" data-filter="Threads">Threads</span>
+            <span class="pill" data-filter="Files/Collections">Files/Collections</span>
+            <span class="pill" data-filter="Advanced">Advanced</span>
+          </div>
+        </div>
+
+        <!-- Experiment List -->
+        <ul class="exp-list" id="exp-list">
+          <!-- Dynamically populated by script.js -->
+        </ul>
+      </aside>
+
+      <!-- Main Content Details Area -->
+      <main class="content-area" id="content-area">
+        
+        <div class="detail-card">
+          <!-- Card Header -->
+          <div class="card-header">
+            <div class="header-top">
+              <div class="header-badges">
+                <span class="badge badge-id" id="detail-id">EXP 01</span>
+                <span class="badge badge-cat" id="detail-cat">Basics</span>
+                <span class="badge badge-file" id="detail-file">StudentDetails.java</span>
+              </div>
+            </div>
+            <h2 class="card-title" id="detail-title">Command Line Arguments</h2>
+          </div>
+
+          <!-- Quick Action Toolbar -->
+          <div class="action-toolbar">
+            <button class="btn btn-primary" onclick="copyActiveCode()" title="Copy entire Java program to clipboard">
+              📋 <span>Copy Clean Code (C)</span>
+            </button>
+            <button class="btn" onclick="downloadActiveFile()" title="Download the .java source file">
+              💾 <span>Download .java (D)</span>
+            </button>
+            <button class="btn" onclick="copyCompileCmd()" title="Copy compile command">
+              ⚡ <span>Copy javac</span>
+            </button>
+            <button class="btn" onclick="copyRunCmd()" title="Copy execution command">
+              ▶️ <span>Copy java</span>
+            </button>
+            <button class="btn" onclick="copySampleInput()" title="Copy sample input text">
+              📥 <span>Copy Input</span>
+            </button>
+          </div>
+
+          <!-- Card Body -->
+          <div class="card-body">
+            
+            <!-- Aim Section -->
+            <div class="section-box">
+              <div class="section-title">
+                <span>📌 Aim of Experiment</span>
+              </div>
+              <div class="aim-text" id="detail-aim">
+                Write a Java program to accept Student Name and Roll Number as command-line arguments and display them.
+              </div>
+            </div>
+
+            <!-- Code Section -->
+            <div class="section-box">
+              <div class="section-title">
+                <span>💻 Java Program Source</span>
+                <span style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent-green);">Ready to Compile</span>
+              </div>
+
+              <!-- Multi-file Tabs (if applicable) -->
+              <div class="file-tabs" id="file-tabs-container" style="display: none;"></div>
+
+              <div class="code-wrapper">
+                <div class="code-header">
+                  <span class="code-filename" id="active-code-filename">StudentDetails.java</span>
+                  <button class="copy-mini-btn" onclick="copyActiveCode()">Copy Code</button>
+                </div>
+                <pre class="code-pre"><code id="code-display"></code></pre>
+              </div>
+            </div>
+
+            <!-- Execution & Compilation Commands -->
+            <div class="section-box">
+              <div class="section-title">
+                <span>⚙️ Compile &amp; Run Commands</span>
+              </div>
+              <div class="terminal-card">
+                <div class="terminal-line">
+                  <div class="terminal-cmd">
+                    <span class="terminal-prompt">$</span>
+                    <span class="terminal-code" id="terminal-compile-cmd">javac StudentDetails.java</span>
+                  </div>
+                  <button class="copy-mini-btn" onclick="copyCompileCmd()">Copy</button>
+                </div>
+                <div class="terminal-line">
+                  <div class="terminal-cmd">
+                    <span class="terminal-prompt">$</span>
+                    <span class="terminal-code" id="terminal-run-cmd">java StudentDetails Ayush 25911A66D6</span>
+                  </div>
+                  <button class="copy-mini-btn" onclick="copyRunCmd()">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Input & Output Grid -->
+            <div class="section-box">
+              <div class="section-title">
+                <span>🧪 Verification Data (Input / Output)</span>
+              </div>
+              <div class="io-grid">
+                <div class="io-box">
+                  <div class="io-box-header">
+                    <span>Sample Input</span>
+                    <button class="copy-mini-btn" onclick="copySampleInput()">Copy</button>
+                  </div>
+                  <div class="io-content" id="sample-input-content"></div>
+                </div>
+                <div class="io-box">
+                  <div class="io-box-header">
+                    <span>Expected Output</span>
+                    <button class="copy-mini-btn" onclick="copySampleOutput()">Copy</button>
+                  </div>
+                  <div class="io-content" id="sample-output-content"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Note & Result -->
+            <div class="note-box">
+              <strong>💡 Lab Instructor Note:</strong> <span id="detail-note"></span>
+              <div style="margin-top: 8px; font-weight: 500; color: var(--accent-green);">
+                <strong>✅ Result:</strong> <span id="detail-result"></span>
+              </div>
+            </div>
+
+            <!-- Viva Cheat Sheet -->
+            <div class="viva-box">
+              <div class="viva-title">
+                <span>🎓 Viva Voce / Internal Examiner Cheat Sheet</span>
+              </div>
+              <ul class="viva-list" id="viva-questions-list">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Bottom Shortcuts Legend -->
+    <footer class="footer-shortcuts">
+      <span class="shortcut-badge"><kbd class="kbd">ESC</kbd> Panic/Oracle Disguise</span>
+      <span class="shortcut-badge"><kbd class="kbd">C</kbd> Copy Code</span>
+      <span class="shortcut-badge"><kbd class="kbd">D</kbd> Download File</span>
+      <span class="shortcut-badge"><kbd class="kbd">J</kbd> / <kbd class="kbd">K</kbd> Next/Prev Experiment</span>
+      <span class="shortcut-badge"><kbd class="kbd">/</kbd> or <kbd class="kbd">Ctrl+K</kbd> Search</span>
+      <span class="shortcut-badge"><kbd class="kbd">T</kbd> Toggle Dark/Light</span>
+    </footer>
+
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div class="toast" id="toast">
+    <span>✓</span> <span>Copied to clipboard!</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="experiments.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
